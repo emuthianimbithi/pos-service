@@ -3,6 +3,7 @@ package database
 import (
 	"fmt"
 	"log"
+	"os"
 
 	"github.com/emuthianimbithi/pos-service/internal/config"
 	"github.com/emuthianimbithi/pos-service/internal/models"
@@ -31,12 +32,15 @@ func Initialize(cfg *config.Config) (*gorm.DB, error) {
 	}
 
 	// Auto-migrate audit model and mpesa models
-	if err := db.AutoMigrate(
-		&models.AuditLog{},
-		&models.MpesaConfig{},
-		&models.MpesaTransaction{},
-	); err != nil {
-		log.Printf("Warning: Failed to migrate database: %v", err)
+	// In production (Cloud Run), you might want to run migrations separately
+	if os.Getenv("SKIP_MIGRATIONS") != "true" {
+		if err := db.AutoMigrate(
+			&models.AuditLog{},
+			&models.MpesaConfig{},
+			&models.MpesaTransaction{},
+		); err != nil {
+			log.Printf("Warning: Failed to migrate database: %v", err)
+		}
 	}
 
 	log.Println("Database connection established")

@@ -10,14 +10,7 @@ type Response struct {
 	Message string      `json:"message,omitempty"`
 	Data    interface{} `json:"data,omitempty"`
 	Error   string      `json:"error,omitempty"`
-}
-
-// PaginatedResponse represents a paginated API response
-type PaginatedResponse struct {
-	Success bool        `json:"success"`
-	Message string      `json:"message,omitempty"`
-	Data    interface{} `json:"data"`
-	Meta    Pagination  `json:"meta"`
+	Meta    interface{} `json:"meta,omitempty"`
 }
 
 // Pagination contains pagination metadata
@@ -47,7 +40,7 @@ func Error(c *gin.Context, statusCode int, message string) {
 
 // Paginated sends a paginated response
 func Paginated(c *gin.Context, statusCode int, data interface{}, pagination Pagination) {
-	c.JSON(statusCode, PaginatedResponse{
+	c.JSON(statusCode, Response{
 		Success: true,
 		Data:    data,
 		Meta:    pagination,

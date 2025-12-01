@@ -194,14 +194,13 @@ func AuditMiddleware(db *gorm.DB) gin.HandlerFunc {
 			}
 		}
 
-		// Save audit log asynchronously to avoid blocking the response
-		go func() {
-			// Create a new DB session to avoid concurrency issues with the main request context
-			if err := db.Session(&gorm.Session{NewDB: true}).Create(&auditLog).Error; err != nil {
-				// Log error (in production use a proper logger)
-				// log.Printf("Failed to create audit log: %v", err)
-			}
-		}()
+		// Save audit log synchronously for Cloud Run compatibility
+		// Cloud Run may kill the container immediately after the response is sent,
+		// so background goroutines are not safe for critical data.
+		if err := db.Session(&gorm.Session{NewDB: true}).Create(&auditLog).Error; err != nil {
+			// Log error (in production use a proper logger)
+			// log.Printf("Failed to create audit log: %v", err)
+		}
 	}
 }
 
