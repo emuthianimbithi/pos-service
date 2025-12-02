@@ -59,19 +59,19 @@ func GetBranchID(c *gin.Context) (uuid.UUID, error) {
 	return bid, nil
 }
 
-// GetRole extracts user role from context
-func GetRole(c *gin.Context) string {
+// GetUserRole extracts user role from context
+func GetUserRole(c *gin.Context) (string, error) {
 	role, exists := c.Get("role")
 	if !exists {
-		return ""
+		return "", errors.New("role not found in context")
 	}
 
 	r, ok := role.(string)
 	if !ok {
-		return ""
+		return "", errors.New("invalid role format")
 	}
 
-	return r
+	return r, nil
 }
 
 // ParseUUIDParam parses UUID from URL parameter

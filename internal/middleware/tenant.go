@@ -3,6 +3,7 @@ package middleware
 import (
 	"net/http"
 
+	"github.com/emuthianimbithi/pos-service/internal/models"
 	"github.com/emuthianimbithi/pos-service/pkg/response"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -55,7 +56,8 @@ func RequireBusiness() gin.HandlerFunc {
 func RequireBranch() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		_, exists := c.Get("branch_id")
-		if !exists {
+		role, _ := c.Get("role")
+		if !exists && role != models.RoleAdmin {
 			response.Error(c, http.StatusBadRequest, "Branch context required")
 			c.Abort()
 			return

@@ -4,22 +4,19 @@ import (
 	"net/http"
 
 	"github.com/emuthianimbithi/pos-service/internal/models"
-	"github.com/emuthianimbithi/pos-service/internal/repository"
 	"github.com/emuthianimbithi/pos-service/internal/services"
 	"github.com/emuthianimbithi/pos-service/internal/utils"
 	"github.com/emuthianimbithi/pos-service/pkg/response"
 	"github.com/gin-gonic/gin"
-	"gorm.io/gorm"
 )
 
 type MpesaHandler struct {
 	service *services.MpesaService
 }
 
-func NewMpesaHandler(db *gorm.DB) *MpesaHandler {
-	repo := repository.NewMpesaRepository(db)
+func NewMpesaHandler(service *services.MpesaService) *MpesaHandler {
 	return &MpesaHandler{
-		service: services.NewMpesaService(repo),
+		service: service,
 	}
 }
 
@@ -127,11 +124,20 @@ func (h *MpesaHandler) InitiateSTKPush(c *gin.Context) {
 
 // Callback handles Safaricom callbacks
 func (h *MpesaHandler) Callback(c *gin.Context) {
-	// TODO: Implement callback processing logic
-	// This endpoint should be public (no auth middleware)
-	// It parses the Safaricom response and updates the transaction status
+	body, err := c.GetRawData()
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "failed to read body"})
+		return
+	}
 
-	c.JSON(200, gin.H{"status": "received"})
+	if err := h.service.ProcessCallback(body); err != nil {
+		// Log error but return 200 to Safaricom so they don't retry
+		// log.Printf("Failed to process callback: %v", err)
+		c.JSON(http.StatusOK, gin.H{"status": "error", "message": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"status": "success"})
 }
 
 // CheckStatus checks the status of a transaction

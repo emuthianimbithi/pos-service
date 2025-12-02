@@ -12,11 +12,10 @@ import (
 	"gorm.io/gorm/logger"
 )
 
-func Initialize(cfg *config.Config) (*gorm.DB, error) {
-	dsn := fmt.Sprintf(
-		"host=%s user=%s password=%s dbname=%s port=%s sslmode=%s",
-		cfg.DBHost, cfg.DBUser, cfg.DBPassword, cfg.DBName, cfg.DBPort, cfg.DBSSLMode,
-	)
+// InitDB initializes the database connection
+func InitDB(cfg *config.Config) (*gorm.DB, error) {
+	dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%s sslmode=disable TimeZone=UTC",
+		cfg.DBHost, cfg.DBUser, cfg.DBPassword, cfg.DBName, cfg.DBPort)
 
 	// Set logger level based on environment
 	logLevel := logger.Info
@@ -38,6 +37,18 @@ func Initialize(cfg *config.Config) (*gorm.DB, error) {
 			&models.AuditLog{},
 			&models.MpesaConfig{},
 			&models.MpesaTransaction{},
+			&models.Alert{},
+			&models.Notification{},
+			&models.Business{},
+			&models.Branch{},
+			&models.User{},
+			&models.Category{},
+			&models.Product{},
+			&models.ProductVariant{},
+			&models.InventoryTransaction{},
+			&models.Shift{},
+			&models.Sale{},
+			&models.SaleItem{},
 		); err != nil {
 			log.Printf("Warning: Failed to migrate database: %v", err)
 		}

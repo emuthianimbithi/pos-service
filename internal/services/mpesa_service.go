@@ -149,6 +149,76 @@ func (s *MpesaService) InitiateSTKPush(branchID uuid.UUID, amount float64, phone
 	return tx, nil
 }
 
+// MpesaCallback represents the callback payload from Safaricom
+type MpesaCallback struct {
+	Body struct {
+		StkCallback struct {
+			MerchantRequestID string `json:"MerchantRequestID"`
+			CheckoutRequestID string `json:"CheckoutRequestID"`
+			ResultCode        int    `json:"ResultCode"`
+			ResultDesc        string `json:"ResultDesc"`
+			CallbackMetadata  struct {
+				Item []struct {
+					Name  string      `json:"Name"`
+					Value interface{} `json:"Value"`
+				} `json:"Item"`
+			} `json:"CallbackMetadata"`
+		} `json:"stkCallback"`
+	} `json:"Body"`
+}
+
+// ProcessCallback processes the M-Pesa callback
+func (s *MpesaService) ProcessCallback(payload []byte) error {
+	var callback MpesaCallback
+	if err := json.Unmarshal(payload, &callback); err != nil {
+		return err
+	}
+
+	data := callback.Body.StkCallback
+
+	// Find transaction
+	tx, err := s.repo.GetTransactionByCheckoutRequestID(data.CheckoutRequestID)
+	if err != nil {
+		return errors.New("transaction not found")
+	}
+
+	// Determine status
+	status := "failed"
+	if data.ResultCode == 0 {
+		status = "completed"
+	} else if data.ResultCode == 1032 {
+		status = "cancelled"
+	}
+
+	// Extract receipt number if successful
+	var receipt string
+	if status == "completed" {
+		for _, item := range data.CallbackMetadata.Item {
+			if item.Name == "MpesaReceiptNumber" {
+				if val, ok := item.Value.(string); ok {
+					receipt = val
+				}
+				break
+			}
+		}
+	}
+
+	// Update transaction
+	// We use a custom update map here to include the receipt number
+	updates := map[string]interface{}{
+		"status":      status,
+		"result_code": data.ResultCode,
+		"result_desc": data.ResultDesc,
+	}
+
+	if receipt != "" {
+		updates["mpesa_receipt"] = receipt
+	}
+
+	// Use the repository to update
+	return s.repo.UpdateTransactionStatus(tx.ID, status, data.ResultCode, data.ResultDesc, receipt)
+}
+
 // GetTransactionStatus retrieves the status of a transaction
 func (s *MpesaService) GetTransactionStatus(id uuid.UUID) (*models.MpesaTransaction, error) {
 	return s.repo.GetTransactionByID(id)

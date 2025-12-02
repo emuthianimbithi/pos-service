@@ -47,12 +47,18 @@ func (r *MpesaRepository) GetTransactionByCheckoutRequestID(checkoutRequestID st
 }
 
 // UpdateTransactionStatus updates the status of a transaction
-func (r *MpesaRepository) UpdateTransactionStatus(id uuid.UUID, status string, resultCode int, resultDesc string) error {
-	return r.db.Model(&models.MpesaTransaction{}).Where("id = ?", id).Updates(map[string]interface{}{
+func (r *MpesaRepository) UpdateTransactionStatus(id uuid.UUID, status string, resultCode int, resultDesc string, receipt string) error {
+	updates := map[string]interface{}{
 		"status":      status,
 		"result_code": resultCode,
 		"result_desc": resultDesc,
-	}).Error
+	}
+
+	if receipt != "" {
+		updates["mpesa_receipt"] = receipt
+	}
+
+	return r.db.Model(&models.MpesaTransaction{}).Where("id = ?", id).Updates(updates).Error
 }
 
 // GetTransactionByID retrieves a transaction by its ID
