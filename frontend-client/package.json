@@ -1,0 +1,28 @@
+{
+  "name": "@pos-service/client",
+  "version": "1.0.0",
+  "description": "TypeScript client library for POS Service API",
+  "main": "index.ts",
+  "types": "index.ts",
+  "scripts": {
+    "type-check": "tsc --noEmit"
+  },
+  "keywords": [
+    "pos",
+    "point-of-sale",
+    "api-client",
+    "typescript",
+    "react-query"
+  ],
+  "author": "",
+  "license": "MIT",
+  "peerDependencies": {
+    "@tanstack/react-query": "^5.0.0",
+    "axios": "^1.6.0",
+    "react": "^18.0.0"
+  },
+  "devDependencies": {
+    "@types/react": "^18.2.0",
+    "typescript": "^5.3.0"
+  }
+}
