@@ -10,6 +10,7 @@ import (
 	"github.com/emuthianimbithi/pos-service/internal/models"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"gorm.io/datatypes"
 	"gorm.io/gorm"
 )
 
@@ -119,10 +120,8 @@ func AuditMiddleware(db *gorm.DB) gin.HandlerFunc {
 		var requestBody []byte
 		if c.Request.Body != nil {
 			bodyBytes, _ := io.ReadAll(c.Request.Body)
-			// Restore the body so handlers can read it
 			c.Request.Body = io.NopCloser(bytes.NewBuffer(bodyBytes))
 
-			// Only log if within size limit
 			if len(bodyBytes) <= maxLogSize {
 				requestBody = bodyBytes
 			} else {
@@ -134,17 +133,24 @@ func AuditMiddleware(db *gorm.DB) gin.HandlerFunc {
 		blw := &bodyLogWriter{body: bytes.NewBufferString(""), ResponseWriter: c.Writer}
 		c.Writer = blw
 
-		// Process request
 		c.Next()
 
-		// Calculate duration
 		duration := time.Since(start).Milliseconds()
 
 		// Scrub sensitive data
 		scrubbedRequest := scrubData(requestBody)
 		scrubbedResponse := scrubData(blw.body.Bytes())
 
-		// Create audit log
+		if scrubbedRequest == "" {
+			scrubbedRequest = "{}"
+		}
+		if scrubbedResponse == "" {
+			scrubbedResponse = "{}"
+		}
+
+		// Ensure metadata is always valid JSON
+		metadata := datatypes.JSON([]byte(`{}`))
+
 		auditLog := models.AuditLog{
 			Method:       c.Request.Method,
 			Path:         c.Request.URL.Path,
@@ -154,9 +160,10 @@ func AuditMiddleware(db *gorm.DB) gin.HandlerFunc {
 			Duration:     duration,
 			RequestBody:  scrubbedRequest,
 			ResponseBody: scrubbedResponse,
+			Metadata:     string(metadata), // <-- FIXED
 		}
 
-		// Extract user context if available
+		// Extract user context
 		if userID, exists := c.Get("user_id"); exists {
 			if uid, ok := userID.(uuid.UUID); ok {
 				auditLog.UserID = &uid
@@ -175,7 +182,7 @@ func AuditMiddleware(db *gorm.DB) gin.HandlerFunc {
 			}
 		}
 
-		// Extract action details if set
+		// Extract action details
 		if action, exists := c.Get("audit_action"); exists {
 			if a, ok := action.(string); ok {
 				auditLog.Action = a
@@ -194,11 +201,8 @@ func AuditMiddleware(db *gorm.DB) gin.HandlerFunc {
 			}
 		}
 
-		// Save audit log synchronously for Cloud Run compatibility
-		// Cloud Run may kill the container immediately after the response is sent,
-		// so background goroutines are not safe for critical data.
+		// Save immediately (Cloud Run safe)
 		if err := db.Session(&gorm.Session{NewDB: true}).Create(&auditLog).Error; err != nil {
-			// Log error (in production use a proper logger)
 			// log.Printf("Failed to create audit log: %v", err)
 		}
 	}
